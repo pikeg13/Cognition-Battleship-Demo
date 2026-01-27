@@ -22,8 +22,9 @@ import {
   hasAlreadyShot,
   placeShipAt,
 } from './game/board'
-import { addScore, loadLeaderboard, type LeaderboardEntry } from './game/leaderboard'
 import { SHIP_SPECS, type BoardState, type Coord, type ShipType, type ShotResult } from './game/types'
+import { submitScore } from './services/leaderboard'
+import { getSupabaseDebugInfo } from './lib/supabaseClient'
 
 const PLAYER_NAME_KEY = 'battleship_player_name'
 const MUTED_KEY = 'battleship_muted'
@@ -132,6 +133,12 @@ function formatClock(totalSeconds: number): string {
 
 type Phase = 'setup' | 'battle' | 'gameover'
 
+type SaveStatus = {
+  state: 'saving' | 'success' | 'error'
+  message: string
+  debugText: string
+}
+
 function resetBoardForRematch(board: BoardState): BoardState {
   return {
     grid: board.grid.map((row) =>
@@ -213,7 +220,8 @@ function App() {
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [endedAt, setEndedAt] = useState<number | null>(null)
 
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() => loadLeaderboard())
+  const [leaderboardRefreshToken, setLeaderboardRefreshToken] = useState<number>(0)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null)
 
   const [muted, setMuted] = useState<boolean>(() => loadMuted())
 
@@ -239,6 +247,10 @@ function App() {
     if (phase !== 'setup') return
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'r' || e.key === 'R') {
+        const target = e.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          return
+        }
         e.preventDefault()
         setSetupHorizontal((v) => !v)
       }
@@ -323,6 +335,7 @@ function App() {
     setPlacementCompleteOpen(false)
     setWizardOpen(true)
     setStatus('New game: choose your settings to begin.')
+    setSaveStatus(null)
   }
 
   function restartPlacement() {
@@ -357,6 +370,16 @@ function App() {
     setWizardOpen(false)
     setSetupError(null)
     setStatus(`${displayName}'s turn: click a cell to fire.`)
+    setSaveStatus(null)
+  }
+
+  async function handleCopySaveDebug(): Promise<void> {
+    if (!saveStatus) return
+    try {
+      await navigator.clipboard.writeText(saveStatus.debugText)
+    } catch {
+      console.info('[supabase] debug info', saveStatus.debugText)
+    }
   }
 
   function showPlacementComplete(title: string, message: string) {
@@ -507,14 +530,42 @@ function App() {
       setEndedAt(now)
       setStatus('You win!')
 
-      const entry: LeaderboardEntry = {
+      const payload = {
         name: playerName,
-        shotsTaken: nextShotsTaken,
-        durationSeconds,
-        dateISO: new Date(now).toISOString(),
         difficulty,
+        shots: nextShotsTaken,
+        time_seconds: durationSeconds,
       }
-      setLeaderboard(addScore(entry))
+
+      const baseDebug = {
+        timestamp: new Date().toISOString(),
+        config: getSupabaseDebugInfo(),
+        payload,
+      }
+
+      setSaveStatus({
+        state: 'saving',
+        message: 'Saving score…',
+        debugText: JSON.stringify({ ...baseDebug, error: null }, null, 2),
+      })
+
+      void (async () => {
+        const result = await submitScore(payload)
+        if (result.ok) {
+          setSaveStatus({
+            state: 'success',
+            message: 'Saved!',
+            debugText: JSON.stringify({ ...baseDebug, error: null }, null, 2),
+          })
+          setLeaderboardRefreshToken((v) => v + 1)
+          return
+        }
+        setSaveStatus({
+          state: 'error',
+          message: `Save failed: ${result.error.message}`,
+          debugText: JSON.stringify({ ...baseDebug, error: result.error }, null, 2),
+        })
+      })()
       return
     }
 
@@ -702,6 +753,15 @@ function App() {
             ) : null}
           </div>
 
+          {phase === 'gameover' && saveStatus ? (
+            <div className={`saveStatus saveStatus--${saveStatus.state}`} role="status" aria-live="polite">
+              <div>{saveStatus.message}</div>
+              <button type="button" className="btn btn-neutral btn-small" onClick={handleCopySaveDebug}>
+                Copy debug info
+              </button>
+            </div>
+          ) : null}
+
           <div className="status-controls" role="group" aria-label="Game controls">
             {!overlayActive ? (
               <button type="button" className="btn btn-neutral" onClick={openNewGameWizard}>
@@ -735,9 +795,7 @@ function App() {
           </div>
         </div>
 
-        <Leaderboard
-          entries={leaderboard}
-        />
+        <Leaderboard refreshSignal={leaderboardRefreshToken} />
       </main>
 
     </div>

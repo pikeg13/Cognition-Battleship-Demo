@@ -11,6 +11,33 @@ npm run dev
 
 Then open the URL printed in the terminal.
 
+### Supabase leaderboard (optional)
+
+By default, the app uses a local leaderboard stored in `localStorage`. To enable cloud leaderboard with Supabase:
+
+1. Create a `.env.local` file in the project root:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+2. Ensure your Supabase project has a `public.leaderboard_scores` table with:
+   - `id` (identity primary key)
+   - `name` (text)
+   - `difficulty` (text: easy/medium/hard)
+   - `shots` (int)
+   - `time_seconds` (int)
+   - `created_at` (timestamptz, default now())
+
+3. Enable RLS with policies allowing:
+   - `anon` SELECT on `leaderboard_scores`
+   - `anon` INSERT on `leaderboard_scores`
+
+**For Vercel deployment**: Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables in your Vercel project settings.
+
+**Note**: Never commit `.env.local` or expose your service/secret keys. Only use the anon (publishable) key in client code.
+
 ### Optional background image
 
 If you add a background image at `public/assets/battleship-bg.jpg`, it will be used as the page background with a dark overlay for readability.

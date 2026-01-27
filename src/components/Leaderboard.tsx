@@ -1,11 +1,12 @@
-import type { LeaderboardEntry } from '../game/leaderboard'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { isSupabaseConfigured } from '../lib/supabaseClient'
+import { loadLeaderboard, type Difficulty as SupabaseDifficulty, type LeaderboardRow } from '../services/leaderboard'
 
 type Props = {
-  entries: LeaderboardEntry[]
+  refreshSignal?: number
 }
 
-type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard'
+type DifficultyFilter = 'all' | SupabaseDifficulty
 
 const FILTER_KEY = 'battleship_leaderboard_difficulty_filter'
 
@@ -26,18 +27,96 @@ function formatDuration(totalSeconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`
 }
 
-export default function Leaderboard({ entries }: Props) {
+export default function Leaderboard({ refreshSignal }: Props) {
   const [filter, setFilter] = useState<DifficultyFilter>(() => loadFilter())
+  const [loading, setLoading] = useState<boolean>(false)
+  const [rows, setRows] = useState<LeaderboardRow[] | null>(null)
+  const [usingLocalFallback, setUsingLocalFallback] = useState<boolean>(!isSupabaseConfigured())
+  const [fallbackReason, setFallbackReason] = useState<'not_configured' | 'error'>(
+    isSupabaseConfigured() ? 'error' : 'not_configured',
+  )
 
-  const filtered = useMemo(() => {
-    if (filter === 'all') return entries
-    return entries.filter((e) => (e.difficulty ?? 'medium') === filter)
-  }, [entries, filter])
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      if (!isSupabaseConfigured()) {
+        setRows(null)
+        setUsingLocalFallback(true)
+        setFallbackReason('not_configured')
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      try {
+        const result = await loadLeaderboard(filter, 20)
+        if (cancelled) return
+        if (result.ok) {
+          setRows(result.data)
+          setUsingLocalFallback(false)
+        } else {
+          setRows(null)
+          setUsingLocalFallback(true)
+          setFallbackReason('error')
+        }
+      } catch {
+        if (cancelled) return
+        setRows(null)
+        setUsingLocalFallback(true)
+        setFallbackReason('error')
+      } finally {
+        if (cancelled) return
+        setLoading(false)
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [filter])
+
+  useEffect(() => {
+    if (refreshSignal === undefined) return
+    if (!isSupabaseConfigured()) return
+    setLoading(true)
+    loadLeaderboard(filter, 20)
+      .then((result) => {
+        if (result.ok) {
+          setRows(result.data)
+          setUsingLocalFallback(false)
+          return
+        }
+        setRows(null)
+        setUsingLocalFallback(true)
+        setFallbackReason('error')
+      })
+      .catch(() => {
+        setRows(null)
+        setUsingLocalFallback(true)
+        setFallbackReason('error')
+      })
+      .finally(() => setLoading(false))
+  }, [filter, refreshSignal])
+
+  const filteredRows = useMemo(() => {
+    if (!rows) return []
+    return rows
+  }, [rows])
+
+  const noteText =
+    fallbackReason === 'not_configured'
+      ? 'Supabase not configured'
+      : 'Supabase unavailable'
 
   return (
     <section className="leaderboard" aria-label="Leaderboard">
       <div className="leaderboardHeader" role="group" aria-label="Leaderboard header">
-        <div className="leaderboardTitle">Leaderboard</div>
+        <div className="leaderboardTitle">
+          <div>Leaderboard</div>
+          {usingLocalFallback ? <div className="leaderboardNote">{noteText}</div> : null}
+        </div>
         <label className="leaderboardFilterLabel">
           <span className="srOnly">Difficulty filter</span>
           <select
@@ -59,7 +138,15 @@ export default function Leaderboard({ entries }: Props) {
       </div>
 
       <div className="leaderboardBody">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="leaderboardEmpty">Loading scores…</div>
+        ) : usingLocalFallback ? (
+          <div className="leaderboardEmpty">
+            {fallbackReason === 'not_configured'
+              ? 'Configure Supabase to enable leaderboard (see README)'
+              : 'Unable to load leaderboard — check connection'}
+          </div>
+        ) : filteredRows.length === 0 ? (
           <div className="leaderboardEmpty">No wins yet — beat the AI to set a record.</div>
         ) : (
           <table className="leaderboardTable">
@@ -72,12 +159,12 @@ export default function Leaderboard({ entries }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((e, idx) => (
-                <tr key={`${e.name}-${e.dateISO}-${idx}`}>
+              {filteredRows.map((e, idx) => (
+                <tr key={`${e.id}-${e.created_at}-${idx}`}>
                   <td>{idx + 1}</td>
                   <td>{e.name}</td>
-                  <td>{e.shotsTaken}</td>
-                  <td>{formatDuration(e.durationSeconds)}</td>
+                  <td>{e.shots}</td>
+                  <td>{formatDuration(e.time_seconds)}</td>
                 </tr>
               ))}
             </tbody>
