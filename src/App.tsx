@@ -248,7 +248,8 @@ function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'r' || e.key === 'R') {
         const target = e.target as HTMLElement
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        const tagName = target.tagName?.toUpperCase()
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target.isContentEditable) {
           return
         }
         e.preventDefault()
