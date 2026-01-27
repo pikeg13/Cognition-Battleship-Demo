@@ -1,0 +1,107 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  --player-color: #2e86ab;
+  --enemy-color: #d64545;
+
+  color-scheme: light;
+  color: #0b2233;
+  background-color: #eef6ff;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(6, 12, 20, 0.55), rgba(6, 12, 20, 0.55)),
+    url('/assets/battleship-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+body.noBgImage {
+  background:
+    radial-gradient(1200px 600px at 15% 10%, rgba(80, 160, 255, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 85% 20%, rgba(80, 255, 210, 0.18), transparent 65%),
+    linear-gradient(160deg, #f6fbff 0%, #d9eeff 45%, #f1f9ff 100%);
+}
+
+#root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  color: inherit;
+  background-color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: rgba(255, 255, 255, 0.9);
+    background-color: #061826;
+  }
+
+  body {
+    background:
+      linear-gradient(rgba(6, 12, 20, 0.65), rgba(6, 12, 20, 0.65)),
+      url('/assets/battleship-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  body.noBgImage {
+    background:
+      radial-gradient(1200px 600px at 15% 10%, rgba(80, 160, 255, 0.22), transparent 60%),
+      radial-gradient(900px 500px at 85% 20%, rgba(80, 255, 210, 0.12), transparent 65%),
+      linear-gradient(160deg, #04131f 0%, #08283a 45%, #03121c 100%);
+  }
+
+  button {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+}
