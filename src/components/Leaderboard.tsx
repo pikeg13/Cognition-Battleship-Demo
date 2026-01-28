@@ -174,40 +174,42 @@ export default function Leaderboard({ refreshSignal }: Props) {
         ) : filteredRows.length === 0 ? (
           <div className="leaderboardEmpty">No wins yet — beat the AI to set a record.</div>
         ) : (
-          <table className="leaderboardTable">
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Name</th>
-                <th 
-                  scope="col" 
-                  onClick={() => handleSortClick('shots')}
-                  style={{ cursor: 'pointer', userSelect: 'none' }}
-                  title="Click to sort by shots"
-                >
-                  Shots {sortColumn === 'shots' ? '▲' : ''}
-                </th>
-                <th 
-                  scope="col" 
-                  onClick={() => handleSortClick('time')}
-                  style={{ cursor: 'pointer', userSelect: 'none' }}
-                  title="Click to sort by time"
-                >
-                  Time {sortColumn === 'time' ? '▲' : ''}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((e, idx) => (
-                <tr key={`${e.id}-${e.created_at}-${idx}`}>
-                  <td>{idx + 1}</td>
-                  <td>{e.name}</td>
-                  <td>{e.shots}</td>
-                  <td>{formatDuration(e.time_seconds)}</td>
+          <div className="leaderboardTableContainer">
+            <table className="leaderboardTable">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Name</th>
+                  <th 
+                    scope="col" 
+                    onClick={() => handleSortClick('shots')}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    title="Click to sort by shots"
+                  >
+                    Shots {sortColumn === 'shots' ? '▲' : ''}
+                  </th>
+                  <th 
+                    scope="col" 
+                    onClick={() => handleSortClick('time')}
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    title="Click to sort by time"
+                  >
+                    Time {sortColumn === 'time' ? '▲' : ''}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredRows.map((e, idx) => (
+                  <tr key={`${e.id}-${e.created_at}-${idx}`}>
+                    <td>{idx + 1}</td>
+                    <td>{e.name}</td>
+                    <td>{e.shots}</td>
+                    <td>{formatDuration(e.time_seconds)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>
