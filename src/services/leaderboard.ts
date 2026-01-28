@@ -51,7 +51,7 @@ export async function loadLeaderboard(
   let query = supabase
     .from('leaderboard_scores')
     .select('id,name,difficulty,shots,time_seconds,created_at')
-    .order('created_at', { ascending: false })
+    .order('shots', { ascending: true })
     .limit(limit)
 
   if (difficulty !== 'all') {

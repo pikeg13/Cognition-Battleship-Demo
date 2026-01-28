@@ -7,8 +7,10 @@ type Props = {
 }
 
 type DifficultyFilter = 'all' | SupabaseDifficulty
+type SortColumn = 'shots' | 'time'
 
 const FILTER_KEY = 'battleship_leaderboard_difficulty_filter'
+const SORT_KEY = 'battleship_leaderboard_sort_column'
 
 function loadFilter(): DifficultyFilter {
   const raw = (localStorage.getItem(FILTER_KEY) ?? '').trim()
@@ -20,6 +22,16 @@ function saveFilter(value: DifficultyFilter): void {
   localStorage.setItem(FILTER_KEY, value)
 }
 
+function loadSortColumn(): SortColumn {
+  const raw = (localStorage.getItem(SORT_KEY) ?? '').trim()
+  if (raw === 'shots' || raw === 'time') return raw
+  return 'shots'
+}
+
+function saveSortColumn(value: SortColumn): void {
+  localStorage.setItem(SORT_KEY, value)
+}
+
 function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds))
   const m = Math.floor(s / 60)
@@ -29,6 +41,7 @@ function formatDuration(totalSeconds: number): string {
 
 export default function Leaderboard({ refreshSignal }: Props) {
   const [filter, setFilter] = useState<DifficultyFilter>(() => loadFilter())
+  const [sortColumn, setSortColumn] = useState<SortColumn>(() => loadSortColumn())
   const [loading, setLoading] = useState<boolean>(false)
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null)
   const [usingLocalFallback, setUsingLocalFallback] = useState<boolean>(!isSupabaseConfigured())
@@ -102,8 +115,20 @@ export default function Leaderboard({ refreshSignal }: Props) {
 
   const filteredRows = useMemo(() => {
     if (!rows) return []
-    return rows
-  }, [rows])
+    const sorted = [...rows].sort((a, b) => {
+      if (sortColumn === 'shots') {
+        return a.shots - b.shots
+      } else {
+        return a.time_seconds - b.time_seconds
+      }
+    })
+    return sorted
+  }, [rows, sortColumn])
+
+  const handleSortClick = (column: SortColumn) => {
+    setSortColumn(column)
+    saveSortColumn(column)
+  }
 
   const noteText =
     fallbackReason === 'not_configured'
@@ -154,8 +179,22 @@ export default function Leaderboard({ refreshSignal }: Props) {
               <tr>
                 <th scope="col">#</th>
                 <th scope="col">Name</th>
-                <th scope="col">Shots</th>
-                <th scope="col">Time</th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSortClick('shots')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                  title="Click to sort by shots"
+                >
+                  Shots {sortColumn === 'shots' ? '▲' : ''}
+                </th>
+                <th 
+                  scope="col" 
+                  onClick={() => handleSortClick('time')}
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                  title="Click to sort by time"
+                >
+                  Time {sortColumn === 'time' ? '▲' : ''}
+                </th>
               </tr>
             </thead>
             <tbody>
